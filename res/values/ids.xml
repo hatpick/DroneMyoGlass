@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item type="id" name="rbtn_images" />
+    <item type="id" name="rbtn_videos" />
+    <item type="id" name="rbtn_all" />
+    <item type="id" name="slider_control">false</item>
+    <item type="id" name="indeterminate_slider">false</item>
+</resources>

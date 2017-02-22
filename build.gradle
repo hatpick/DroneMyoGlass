@@ -1,0 +1,141 @@
+import groovy.swing.SwingBuilder
+import com.android.builder.core.DefaultManifestParser
+
+buildscript {
+    ext.kotlin_version = '0.8.11'
+    repositories {
+        mavenCentral()
+        maven {
+            url 'http://oss.sonatype.org/content/repositories/snapshots'
+        }
+    }
+
+    dependencies {
+        classpath 'com.android.tools.build:gradle:0.12.2'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+
+repositories {
+    mavenCentral()
+    maven {
+        url 'http://oss.sonatype.org/content/repositories/snapshots'
+        }
+    maven { url './myorepository' }
+}
+
+dependencies {
+    compile 'com.android.support:support-v4:19.1.0'
+    compile project(':libraries:AndroHud')
+    compile files('libs/gdk.jar')
+    compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    compile 'com.thalmic:myosdk:0.6.0@aar'
+}
+
+
+android {
+    compileSdkVersion 19
+    buildToolsVersion '19.1.0'
+
+    sourceSets {
+        main {
+            manifest.srcFile 'AndroidManifest.xml'
+            java.srcDirs = ['src', 'src/main/kotlin']
+            resources.srcDirs = ['src']
+            aidl.srcDirs = ['src']
+            renderscript.srcDirs = ['src']
+            res.srcDirs = ['res']
+            assets.srcDirs = ['assets']
+            jniLibs.srcDirs = ['libs']
+        }
+
+        // Move the tests to tests/java, tests/res, etc...
+        androidTest.setRoot('tests')
+
+        // Move the build types to build-types/<type>
+        // For instance, build-types/debug/java, build-types/debug/AndroidManifest.xml, ...
+        // This moves them out of them default location under src/<type>/... which would
+        // conflict with src/ being used by the main source set.
+        // Adding new build types or product flavors should be accompanied
+        // by a similar customization.
+        debug.setRoot('build-types/debug')
+        release.setRoot('build-types/release')
+        main.java.srcDirs += 'src/main/kotlin'
+    }
+
+/*
+    signingConfigs {
+        release {
+            storeFile file(System.getenv("ANDROID_KEYSTORE"))
+            storePassword ""
+            keyAlias "${System.getenv("ANDROID_KEYALIAS")}"
+            keyPassword ""
+        }
+    }
+*/
+    productFlavors {
+//        arm {
+//            ndk {
+//                abiFilters "armeabi-v7a", "armeabi"
+//            }
+//        }
+    }
+
+/*
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            applicationVariants.all { variant ->
+                def file = variant.outputFile
+                def versionName = defaultConfig.versionName ?: new DefaultManifestParser().getVersionName(android.sourceSets.main.manifest.srcFile)
+                variant.outputFile = new File(file.parent, file.name.replace(".apk",
+                        "-${versionName}.apk"))
+            }
+        }
+    }
+    */
+}
+
+gradle.taskGraph.whenReady { taskGraph ->
+    if (taskGraph.hasTask(':assembleRelease') || taskGraph.hasTask(':installArmRelease')) {
+        def pass = ''
+        if (System.console() == null) {
+            new SwingBuilder().edt {
+                dialog(modal: true, //Otherwise the build will continue running
+                        title: 'Enter password', //Dialog title
+                        alwaysOnTop: true,
+                        resizable: false,
+                        locationRelativeTo: null, //Place dialog in center of the screen
+                        pack: true, //We need to pack the dialog (so it will take the size of its children
+                        show: true
+                ){
+                    vbox { //Put everything below each other
+                        label(text: "Please enter key passphrase:")
+                        input = passwordField()
+                        button(defaultButton: true, text: 'OK', actionPerformed: {
+                            pass = new String(input.password); //set pass variable to value of input
+                            // field
+                            dispose(); //close dialog
+                        })
+                    }
+                }
+            }
+        }
+        else{
+            pass = new String(System.console().readPassword("\nPlease enter key passphrase: "))
+        }
+
+        if(pass.size() <= 0){
+            throw new InvalidUserDataException("You must enter a password to proceed.")
+        }
+
+        // -----
+        // Do what you need to do with pass here!
+        // -----
+        android.signingConfigs.release.storePassword = pass
+        android.signingConfigs.release.keyPassword = pass
+    }
+}
